@@ -1,0 +1,8 @@
+*.DS_Store
+/build
+/docs
+node_modules/
+.idea/
+npm-debug.log
+.java-version
+release.py

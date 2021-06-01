@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PlayCanvas Post Effects</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <link rel="icon" type="image/png" href="../playcanvas-favicon.png" />
+    <script src="../../build/playcanvas.js"></script>
+    <script src="../assets/scripts/asset-loader.js"></script>
+    <script src="../../build/playcanvas-extras.js"></script>
+    <style>
+        body { 
+            margin: 0;
+            overflow-y: hidden;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- The canvas element -->
+    <canvas id="application-canvas"></canvas>
+
+    <script>
+        function createMaterial(colors) {
+            var material = new pc.StandardMaterial();
+            for (var param in colors) {
+                material[param] = colors[param];
+            }
+            material.update();
+            return material;
+        }
+
+        // create the application
+        var canvas = document.getElementById("application-canvas");
+        var app = new pc.Application(canvas);
+        //app.graphicsDevice.webgl2=false;
+    </script>
+
+    <!-- Include some post effects -->
+    <script src="../../scripts/posteffects/posteffect-toon1.js"></script>
+    <script src="../../scripts/posteffects/posteffect-toon.js"></script>
+    <!-- The script -->
+    <script>
+        var a=Date.now();
+        // Start the update loop
+        app.start();
+        // Set the canvas to fill the window and automatically change resolution to be the same as the canvas size
+        app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
+        app.setCanvasResolution(pc.RESOLUTION_AUTO);
+
+        window.addEventListener("resize", function () {
+            app.resizeCanvas(canvas.width, canvas.height);
+        });
+        //var miniStats = new pcx.MiniStats(app);
+
+        app.scene.ambientLight = new pc.Color(0.2, 0.2, 0.2);
+
+        // Generate some materials to assigm to scene objects
+        var gray = createMaterial({
+            ambient: new pc.Color(0.1, 0.1, 0.1),
+            diffuse: new pc.Color(0.5, 0.5, 0.5)
+        });
+        var white = createMaterial({
+            emissive: new pc.Color(1, 1, 1)
+        });
+        var blue = createMaterial({
+            diffuse: new pc.Color(0, 0, 0),
+            emissive: new pc.Color(0, 0, 1)
+        });
+
+        var entity, light, camera;
+
+        // Load a model file and create a Entity with a model component
+        var url = "../assets/models/statue.glb";
+        app.assets.loadFromUrl(url, "container", function (err, asset) {
+            entity = new pc.Entity();
+            entity.addComponent("model", {
+                type: "asset",
+                asset: asset.resource.model,
+                castShadows: true
+            });
+            entity.model.material=white;
+            // entity.setLocalScale(0.05,0.05,0.05);
+            // entity.setEulerAngles(0,180, 0);
+            app.root.addChild(entity);
+        });
+       
+        // Create an Entity with a camera component
+        var camera = new pc.Entity();
+        camera.addComponent("camera", {
+            clearColor: new pc.Color(1.0, 1.0, 1.0)
+        });
+        camera.translate(0, 10, 18);
+        // create box entity
+        const box = new pc.Entity('cube');
+        box.addComponent('model', {
+            type: 'box'
+        });
+        app.root.addChild(box);
+        // Create an Entity for the ground
+        var ground = new pc.Entity();
+        ground.addComponent("model", {
+            type: "box"
+        });
+        ground.setLocalScale(50, 1, 50);
+        ground.setLocalPosition(0, -0.5, 0);
+        ground.model.material = white;
+
+        // Create an spot light
+        var light = new pc.Entity();
+        light.addComponent("light", {
+            type: "spot",
+            color: new pc.Color(1, 1, 1),
+            outerConeAngle: 60,
+            innerConeAngle: 40,
+            range: 100,
+            intensity: 1,
+            castShadows: true,
+            shadowBias: 0.005,
+            normalOffsetBias: 0.01,
+            shadowResolution: 2048
+        });
+
+        var cone = new pc.Entity();
+        cone.addComponent("model", {
+            type: "cone"
+        });
+        cone.model.material = white;
+        light.addChild(cone);
+
+        // Create a point light
+        var pointlight = new pc.Entity();
+        pointlight.addComponent("light", {
+            type: "point",
+            color: new pc.Color(0, 0, 0),
+            range: 100,
+            intensity: 1
+        });
+        pointlight.addComponent("model", {
+            type: "sphere"
+        });
+        pointlight.model.material = white;
+
+        // create some post effects
+        // var bloom = new pc.BloomEffect(app.graphicsDevice);
+        // bloom.bloomThreshold = 0.1;
+        // camera.camera.postEffects.addEffect(bloom);
+
+        // var sepia = new pc.SepiaEffect(app.graphicsDevice);
+        // sepia.amount = 0.7;
+        // camera.camera.postEffects.addEffect(sepia);
+
+        // var ssao=new SSAOEffect(app.graphicsDevice);
+
+
+//        var frame=new ToonEffect(app.graphicsDevice);
+//        camera.camera.postEffects.addEffect(frame);
+
+        var frame=new pc.ToonShadeEffect(app.graphicsDevice);
+        camera.camera.postEffects.addEffect(frame);
+        // var ssao=new pc.SSAOEffect(app.graphicsDevice);
+        // camera.camera.postEffects.addEffect(ssao);
+        // var toon=new pc.ToonShadeEffect(app.graphicsDevice);
+        // camera.camera.postEffects.addEffect(toon);
+        // var vignette = new pc.VignetteEffect(app.graphicsDevice);
+        // vignette.darkness = 2;
+        // camera.camera.postEffects.addEffect(vignette);
+
+        // var bokeh = new pc.BokehEffect(app.graphicsDevice);
+        // bokeh.focus = 0.0 - camera.getLocalPosition().z;
+        // camera.camera.postEffects.addEffect(bokeh);
+        // Add Entities into the scene hierarchy
+        app.root.addChild(camera);
+        app.root.addChild(light);
+        app.root.addChild(pointlight);
+        app.root.addChild(ground);
+
+        // Simple update loop to rotate the light
+        var radius = 20;
+        var height = 5;
+        var angle = 0;
+
+        var pointRadius = 5;
+        var pointHeight = 10;
+
+        var hasEffects = true;
+        var onKeyDown = function (e) {
+            if (e.key === pc.KEY_SPACE) {
+                if (hasEffects) {
+                     
+                  //  camera.camera.postEffects.removeEffect(ssao);
+                } else {
+                   // camera.camera.postEffects.removeEffect(ssao);
+                }
+                hasEffects = !hasEffects;
+            }
+            e.event.preventDefault(); // Use original browser event to prevent browser action.
+        };
+        var keyboard = new pc.Keyboard(document.body);
+        keyboard.on("keydown", onKeyDown, this);
+
+        app.on("update", function (dt) {
+            angle += 20 * dt;
+            if (angle > 360) {
+                angle -= 360;
+            }
+            if (entity) {
+                light.lookAt(entity.getPosition());
+                light.rotateLocal(90, 0, 0);
+                light.setLocalPosition(radius * Math.sin(angle * pc.math.DEG_TO_RAD), height, radius * Math.cos(angle * pc.math.DEG_TO_RAD));
+                //entity.setLocalPosition(-radius * Math.sin(angle * pc.math.DEG_TO_RAD), height, radius * Math.cos(angle * pc.math.DEG_TO_RAD));
+                pointlight.setLocalPosition(pointRadius * Math.sin(-2 * angle * pc.math.DEG_TO_RAD), pointHeight, pointRadius * Math.cos(-2 * angle * pc.math.DEG_TO_RAD));
+
+                //bokeh.focus = light.getLocalPosition().z-camera.getLocalPosition().z;
+            }
+
+            
+        });
+        
+        // console.log(b-a);
+    </script>
+</body>
+</html>
